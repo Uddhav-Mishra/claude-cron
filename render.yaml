@@ -1,5 +1,5 @@
 services:
-  - type: cronjob
+  - type: cron
     name: claude-hi-cron
     runtime: docker
     plan: starter
