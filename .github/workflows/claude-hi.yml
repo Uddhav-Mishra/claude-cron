@@ -26,7 +26,7 @@ jobs:
           #   Europe/London, Europe/Paris, Asia/Kolkata, Asia/Tokyo, Australia/Sydney
           #   (full list + more in the README)
           TZ: ${{ vars.TZ || 'Asia/Kolkata' }}
-          RUN_HOURS: ${{ vars.RUN_HOURS || '11,16' }}
+          RUN_HOURS: ${{ vars.RUN_HOURS || '6,11,16,21' }}
           EVENT: ${{ github.event_name }}
         run: |
           if [ "$EVENT" = "workflow_dispatch" ]; then

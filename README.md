@@ -6,7 +6,7 @@ A free GitHub Actions workflow that says **"hi"** to Claude Code on a daily
 schedule, using your Claude **subscription** (Pro/Max), not API credits.
 
 It runs `claude -p "hi"` (via `send_hi.py`) on GitHub's servers, so nothing needs
-to stay running on your machine. Default schedule: **11:00 AM and 4:00 PM IST**.
+to stay running on your machine. Default schedule: **6 AM, 11 AM, 4 PM & 9 PM IST**.
 
 ## Setup (2 steps)
 
@@ -38,9 +38,9 @@ time. Configure it with repo **Variables** (not secrets):
 | Variable    | Example        | Meaning                                      |
 |-------------|----------------|----------------------------------------------|
 | `TZ`        | `Asia/Kolkata` | Any IANA timezone (DST handled automatically)|
-| `RUN_HOURS` | `11,16`        | Local hours to run, comma-separated (0–23)   |
+| `RUN_HOURS` | `6,11,16,21`   | Local hours to run, comma-separated (0–23)   |
 
-Defaults (if you set nothing): `TZ=Asia/Kolkata`, `RUN_HOURS=11,16` → 11 AM & 4 PM IST.
+Defaults (if you set nothing): `TZ=Asia/Kolkata`, `RUN_HOURS=6,11,16,21` → 6 AM, 11 AM, 4 PM & 9 PM IST.
 Examples: New York at 9am & 6pm → `TZ=America/New_York`, `RUN_HOURS=9,18`.
 
 <details>
