@@ -41,6 +41,11 @@ time. Configure it with repo **Variables** (not secrets):
 Defaults (if you set nothing): `TZ=Asia/Kolkata`, `RUN_HOURS=11,16` → 11 AM & 4 PM IST.
 Examples: New York at 9am & 6pm → `TZ=America/New_York`, `RUN_HOURS=9,18`.
 
+The gate matches on the **hour**, so the run lands at the minute set by the cron
+line (`30 * * * *`): `local_minute = (cron_minute + your_tz_offset) mod 60`.
+IST is +5:30, so minute 30 → **:00 IST** (on the hour). If your timezone is a
+whole-hour offset and you want on-the-hour runs, change the cron minute to `0`.
+
 ## Test it now
 **repo → Actions → claude-hi → Run workflow** (a manual run skips the time gate).
 Check the logs for `Claude replied: Hi! How can I help you today?`

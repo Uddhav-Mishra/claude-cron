@@ -2,10 +2,12 @@ name: claude-hi
 
 on:
   schedule:
-    # Runs every hour (UTC). The "Gate" step below decides whether the current
-    # hour matches YOUR local schedule, so you configure times via repo
-    # Variables (TZ + RUN_HOURS) instead of editing this cron line.
-    - cron: "0 * * * *"
+    # Runs every hour (UTC); the "Gate" step decides if the current hour matches
+    # YOUR local schedule (repo Variables TZ + RUN_HOURS), so you don't edit this.
+    # The cron MINUTE sets the run's local minute: local_minute =
+    # (cron_minute + tz_offset_minutes) mod 60. Minute 30 + IST(+5:30) => :00 IST,
+    # i.e. runs land exactly on the hour (11:00 / 16:00 IST).
+    - cron: "30 * * * *"
   workflow_dispatch: {} # manual run for testing (always passes the gate)
 
 # Least privilege: this workflow only needs to read the repo.
