@@ -1,5 +1,7 @@
 # Claude "Hi" Cron Job
 
+[![claude-hi](https://github.com/Uddhav-Mishra/claude-cron/actions/workflows/claude-hi.yml/badge.svg)](https://github.com/Uddhav-Mishra/claude-cron/actions/workflows/claude-hi.yml)
+
 A free GitHub Actions workflow that says **"hi"** to Claude Code on a daily
 schedule, using your Claude **subscription** (Pro/Max), not API credits.
 
