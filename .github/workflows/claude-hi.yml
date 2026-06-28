@@ -8,8 +8,6 @@ on:
     # (cron_minute + tz_offset_minutes) mod 60. Minute 30 + IST(+5:30) => :00 IST,
     # i.e. runs land exactly on the hour (11:00 / 16:00 IST).
     - cron: "30 * * * *"
-    - cron: "40 12 * * *" # TEMP test: 12:40 UTC = 18:10 IST (remove after testing)
-    - cron: "45 12 * * *" # TEMP test: 12:45 UTC = 18:15 IST (remove after testing)
   workflow_dispatch: {} # manual run for testing (always passes the gate)
 
 # Least privilege: this workflow only needs to read the repo.
