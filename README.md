@@ -43,6 +43,43 @@ time. Configure it with repo **Variables** (not secrets):
 Defaults (if you set nothing): `TZ=Asia/Kolkata`, `RUN_HOURS=11,16` → 11 AM & 4 PM IST.
 Examples: New York at 9am & 6pm → `TZ=America/New_York`, `RUN_HOURS=9,18`.
 
+<details>
+<summary>Common <code>TZ</code> values</summary>
+
+**Americas**
+| Region            | `TZ`                  |
+|-------------------|-----------------------|
+| US Eastern        | `America/New_York`    |
+| US Central        | `America/Chicago`     |
+| US Mountain       | `America/Denver`      |
+| US Pacific        | `America/Los_Angeles` |
+| Toronto           | `America/Toronto`     |
+| Mexico City       | `America/Mexico_City` |
+| São Paulo         | `America/Sao_Paulo`   |
+
+**Europe / Africa**
+| Region            | `TZ`                  |
+|-------------------|-----------------------|
+| UK                | `Europe/London`       |
+| Central Europe    | `Europe/Paris` / `Europe/Berlin` |
+| Madrid            | `Europe/Madrid`       |
+| Moscow            | `Europe/Moscow`       |
+| Johannesburg      | `Africa/Johannesburg` |
+
+**Asia / Pacific**
+| Region            | `TZ`                  |
+|-------------------|-----------------------|
+| India             | `Asia/Kolkata`        |
+| UAE               | `Asia/Dubai`          |
+| Singapore         | `Asia/Singapore`      |
+| Japan             | `Asia/Tokyo`          |
+| China             | `Asia/Shanghai`       |
+| Sydney            | `Australia/Sydney`    |
+| Auckland          | `Pacific/Auckland`    |
+
+Full list: [IANA tz database](https://en.wikipedia.org/wiki/List_of_tz_database_time_zones).
+</details>
+
 The gate matches on the **hour**, so the run lands at the minute set by the cron
 line (`30 * * * *`): `local_minute = (cron_minute + your_tz_offset) mod 60`.
 IST is +5:30, so minute 30 → **:00 IST** (on the hour). If your timezone is a

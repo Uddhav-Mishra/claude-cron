@@ -22,6 +22,9 @@ jobs:
         id: gate
         env:
           # Override these in: repo Settings -> Secrets and variables -> Actions -> Variables
+          # Common TZ: America/New_York, America/Chicago, America/Los_Angeles,
+          #   Europe/London, Europe/Paris, Asia/Kolkata, Asia/Tokyo, Australia/Sydney
+          #   (full list + more in the README)
           TZ: ${{ vars.TZ || 'Asia/Kolkata' }}
           RUN_HOURS: ${{ vars.RUN_HOURS || '11,16' }}
           EVENT: ${{ github.event_name }}
