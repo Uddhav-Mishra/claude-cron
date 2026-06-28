@@ -64,3 +64,7 @@ CLAUDE_CODE_OAUTH_TOKEN=sk-ant-oat... python3 send_hi.py
   them deliberately in `.github/workflows/claude-hi.yml`.
 - GitHub may pause scheduled workflows after ~60 days of repo inactivity (any push
   re-enables them), and scheduled runs can be delayed a few minutes under load.
+
+## License
+
+[MIT](LICENSE)
