@@ -2,22 +2,54 @@ name: claude-hi
 
 on:
   schedule:
-    # GitHub Actions cron is in UTC. IST is UTC+5:30.
-    #   05:30 UTC = 11:00 AM IST
-    #   10:30 UTC =  4:00 PM IST
-    - cron: "30 5,10 * * *"
-  workflow_dispatch: {} # allow manual runs for testing
+    # Runs every hour (UTC). The "Gate" step below decides whether the current
+    # hour matches YOUR local schedule, so you configure times via repo
+    # Variables (TZ + RUN_HOURS) instead of editing this cron line.
+    - cron: "0 * * * *"
+  workflow_dispatch: {} # manual run for testing (always passes the gate)
+
+# Least privilege: this workflow only needs to read the repo.
+permissions:
+  contents: read
 
 jobs:
   hi:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Gate on local time
+        id: gate
+        env:
+          # Override these in: repo Settings -> Secrets and variables -> Actions -> Variables
+          TZ: ${{ vars.TZ || 'Asia/Kolkata' }}
+          RUN_HOURS: ${{ vars.RUN_HOURS || '11,16' }}
+          EVENT: ${{ github.event_name }}
+        run: |
+          if [ "$EVENT" = "workflow_dispatch" ]; then
+            echo "Manual run — skipping time gate."
+            echo "run=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          hour=$(TZ="$TZ" date +%-H)
+          echo "Current hour in $TZ: $hour (configured RUN_HOURS: $RUN_HOURS)"
+          if [[ ",$RUN_HOURS," == *",$hour,"* ]]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "Not a scheduled hour — skipping."
+            echo "run=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Checkout
+        if: steps.gate.outputs.run == 'true'
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          persist-credentials: false
 
       - name: Install Claude Code CLI
-        run: npm install -g @anthropic-ai/claude-code
+        if: steps.gate.outputs.run == 'true'
+        run: npm install -g @anthropic-ai/claude-code@2.1.195
 
       - name: Send hi to Claude
+        if: steps.gate.outputs.run == 'true'
         run: python3 send_hi.py
         env:
           CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
