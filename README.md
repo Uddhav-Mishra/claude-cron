@@ -28,6 +28,12 @@ repository secret**, name `CLAUDE_CODE_OAUTH_TOKEN`.
 
 That's it. The schedule runs automatically.
 
+## Alternative: deploy on Cloudflare Workers
+
+GitHub's scheduled cron is best-effort and often drops runs. For reliable,
+on-time triggering, there's a Cloudflare Worker version in [`cloudflare/`](cloudflare/)
+that calls the same API path — see [`cloudflare/README.md`](cloudflare/README.md).
+
 ## Set your own times & timezone (no YAML editing)
 
 GitHub Actions cron is UTC-only and can't read variables, so this workflow runs

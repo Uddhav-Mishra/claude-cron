@@ -1,0 +1,19 @@
+# Cloudflare Worker that says "hi" to Claude on a reliable cron schedule.
+#
+# Cron Triggers are UTC-only and fire on time (unlike GitHub Actions cron), so
+# no catch-up/dedupe logic is needed — just the four send-times.
+#
+#   IST 06:00 -> UTC 00:30
+#   IST 11:00 -> UTC 05:30
+#   IST 16:00 -> UTC 10:30
+#   IST 21:00 -> UTC 15:30
+#
+# The CLAUDE_CODE_OAUTH_TOKEN is set as an encrypted secret, NOT here:
+#   wrangler secret put CLAUDE_CODE_OAUTH_TOKEN
+
+name = "claude-hi"
+main = "src/index.js"
+compatibility_date = "2026-06-29"
+
+[triggers]
+crons = ["30 0,5,10,15 * * *"]
