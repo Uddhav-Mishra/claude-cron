@@ -5,8 +5,9 @@
 A free GitHub Actions workflow that says **"hi"** to Claude Code on a daily
 schedule, using your Claude **subscription** (Pro/Max), not API credits.
 
-It runs `claude -p "hi"` (via `send_hi.py`) on GitHub's servers, so nothing needs
-to stay running on your machine. Default schedule: **6 AM, 11 AM, 4 PM & 9 PM IST**.
+It calls the Messages API directly (via `send_hi.py`, Python standard library
+only — no CLI, no Node) on GitHub's servers, so nothing needs to stay running on
+your machine. Default schedule: **6 AM, 11 AM, 4 PM & 9 PM IST**.
 
 ## Setup (2 steps)
 

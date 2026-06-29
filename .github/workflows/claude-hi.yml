@@ -85,10 +85,6 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Install Claude Code CLI
-        if: steps.gate.outputs.run == 'true' && steps.marker.outputs.cache-hit != 'true'
-        run: npm install -g @anthropic-ai/claude-code@2.1.195
-
       - name: Send hi to Claude
         if: steps.gate.outputs.run == 'true' && steps.marker.outputs.cache-hit != 'true'
         run: python3 send_hi.py

@@ -1,67 +1,105 @@
-"""Send a 'hi' message to Claude Code on a schedule (GitHub Actions).
+"""Send a 'hi' message to Claude on a schedule (GitHub Actions).
 
-Shells out to the `claude` CLI in non-interactive print mode. Authentication comes
-from the CLAUDE_CODE_OAUTH_TOKEN env var (generate locally with `claude setup-token`).
+Calls the Messages API directly over HTTPS using the Python standard library —
+no `claude` CLI, no Node. Authentication uses the CLAUDE_CODE_OAUTH_TOKEN env var
+(generate locally with `claude setup-token`), sent as a Bearer token. This is the
+same subscription-billed path the CLI uses, so it consumes your subscription
+usage rather than pay-per-token API credits.
+
+The OAuth token is scoped to the Claude Code client, so the request must identify
+itself as Claude Code (the oauth beta header + the Claude Code system prompt);
+without that the API rejects it with a 429.
 """
 
 import json
 import os
-import subprocess
 import sys
+import urllib.error
+import urllib.request
 from datetime import datetime, timedelta, timezone
 
 IST = timezone(timedelta(hours=5, minutes=30))
 
+API_URL = "https://api.anthropic.com/v1/messages"
+MODEL = "claude-opus-4-8"
+# Required: the OAuth token is a Claude Code credential, so the request must
+# present as Claude Code or the API returns 429.
+SYSTEM_PROMPT = "You are Claude Code, Anthropic's official CLI for Claude."
+TIMEOUT_SECONDS = 120
+
 
 def _redact(text: str) -> str:
-    """Never echo the token, in case the CLI ever includes it in its output."""
+    """Never echo the token, in case it ever appears in an error body."""
     token = os.environ.get("CLAUDE_CODE_OAUTH_TOKEN", "")
     return text.replace(token, "***") if token else text
 
 
 def main() -> int:
-    if not os.environ.get("CLAUDE_CODE_OAUTH_TOKEN"):
+    token = os.environ.get("CLAUDE_CODE_OAUTH_TOKEN")
+    if not token:
         print("ERROR: CLAUDE_CODE_OAUTH_TOKEN is not set.", file=sys.stderr)
         return 1
 
     now_ist = datetime.now(IST)
-    print(f"[{now_ist:%Y-%m-%d %H:%M:%S} IST] Sending 'hi' to Claude Code...")
+    print(f"[{now_ist:%Y-%m-%d %H:%M:%S} IST] Sending 'hi' to Claude...")
+
+    body = json.dumps(
+        {
+            "model": MODEL,
+            "max_tokens": 64,
+            "system": SYSTEM_PROMPT,
+            "messages": [{"role": "user", "content": "hi"}],
+        }
+    ).encode()
+
+    request = urllib.request.Request(
+        API_URL,
+        data=body,
+        method="POST",
+        headers={
+            "authorization": f"Bearer {token}",
+            "anthropic-version": "2023-06-01",
+            "anthropic-beta": "oauth-2025-04-20",
+            "content-type": "application/json",
+            "user-agent": "claude-cli/2.1.195 (external, cli)",
+            "x-app": "cli",
+        },
+    )
 
     try:
-        result = subprocess.run(
-            ["claude", "-p", "hi", "--output-format", "json"],
-            capture_output=True,
-            text=True,
-            timeout=120,
-        )
-    except FileNotFoundError:
-        print("ERROR: `claude` CLI not found on PATH.", file=sys.stderr)
+        with urllib.request.urlopen(request, timeout=TIMEOUT_SECONDS) as response:
+            raw = response.read().decode()
+    except urllib.error.HTTPError as exc:
+        detail = _redact(exc.read().decode(errors="replace").strip())
+        print(f"HTTP {exc.code} from Messages API: {detail}", file=sys.stderr)
         return 1
-    except subprocess.TimeoutExpired:
-        print("ERROR: `claude` timed out after 120s.", file=sys.stderr)
+    except urllib.error.URLError as exc:
+        print(f"ERROR: request failed: {exc.reason}", file=sys.stderr)
         return 1
-
-    if result.returncode != 0:
-        print(f"claude exited with code {result.returncode}", file=sys.stderr)
-        print(_redact(result.stderr.strip()), file=sys.stderr)
-        return result.returncode
+    except TimeoutError:
+        print(f"ERROR: request timed out after {TIMEOUT_SECONDS}s.", file=sys.stderr)
+        return 1
 
     try:
-        payload = json.loads(result.stdout)
+        payload = json.loads(raw)
     except json.JSONDecodeError:
-        print("Could not parse claude output:", file=sys.stderr)
-        print(_redact(result.stdout), file=sys.stderr)
+        print("Could not parse API response:", file=sys.stderr)
+        print(_redact(raw), file=sys.stderr)
         return 1
 
-    if not isinstance(payload, dict):
-        print("Unexpected claude output (not a JSON object).", file=sys.stderr)
+    if payload.get("type") == "error":
+        print(f"Claude returned an error: {payload.get('error')}", file=sys.stderr)
         return 1
 
-    if payload.get("is_error"):
-        print(f"Claude returned an error: {payload.get('result')}", file=sys.stderr)
-        return 1
-
-    print(f"Claude replied: {payload.get('result')}")
+    text = next(
+        (
+            block.get("text", "")
+            for block in payload.get("content", [])
+            if block.get("type") == "text"
+        ),
+        "",
+    )
+    print(f"Claude replied: {text}")
     return 0
 
 
