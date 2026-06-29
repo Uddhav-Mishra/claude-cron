@@ -2,17 +2,18 @@ name: claude-hi
 
 on:
   schedule:
-    # Runs every hour (UTC); the "Gate" step decides if the current hour matches
-    # YOUR local schedule (repo Variables TZ + RUN_HOURS), so you don't edit this.
-    # The cron MINUTE sets the run's local minute: local_minute =
-    # (cron_minute + tz_offset_minutes) mod 60. Minute 30 + IST(+5:30) => :00 IST,
-    # i.e. runs land exactly on the hour (11:00 / 16:00 IST).
-    - cron: "30 * * * *"
-  workflow_dispatch: {} # manual run for testing (always passes the gate)
+    # Twice an hour (UTC). The "Gate" step below maps the current local time
+    # (repo Variables TZ + RUN_HOURS) onto your configured send-hours, with a
+    # catch-up window so a delayed OR dropped trigger is still covered. The
+    # per-slot cache marker guarantees each send-hour fires exactly once a day,
+    # so the doubled frequency never means a doubled "hi".
+    - cron: "0,30 * * * *"
+  workflow_dispatch: {} # manual run for testing (always sends)
 
-# Least privilege: this workflow only needs to read the repo.
+# Least privilege: read the repo, plus the cache marker for idempotency.
 permissions:
   contents: read
+  actions: write
 
 jobs:
   hi:
@@ -21,40 +22,88 @@ jobs:
       - name: Gate on local time
         id: gate
         env:
-          # Override these in: repo Settings -> Secrets and variables -> Actions -> Variables
-          # Common TZ: America/New_York, America/Chicago, America/Los_Angeles,
-          #   Europe/London, Europe/Paris, Asia/Kolkata, Asia/Tokyo, Australia/Sydney
-          #   (full list + more in the README)
+          # Override in: repo Settings -> Secrets and variables -> Actions -> Variables
+          # Common TZ: America/New_York, America/Los_Angeles, Europe/London,
+          #   Asia/Kolkata, Asia/Tokyo, Australia/Sydney (full list in the README)
           TZ: ${{ vars.TZ || 'Asia/Kolkata' }}
           RUN_HOURS: ${{ vars.RUN_HOURS || '6,11,16,21' }}
+          # How long after a send-hour a delayed/dropped slot can still be caught
+          # up (minutes). 90 = a slot missed at :00 can still fire up to 1.5h later.
+          CATCHUP_MIN: ${{ vars.CATCHUP_MIN || '90' }}
           EVENT: ${{ github.event_name }}
         run: |
+          set -euo pipefail
+
           if [ "$EVENT" = "workflow_dispatch" ]; then
-            echo "Manual run — skipping time gate."
+            echo "Manual run — sending immediately."
             echo "run=true" >> "$GITHUB_OUTPUT"
+            echo "slot=manual-$(date +%s)" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          hour=$(TZ="$TZ" date +%-H)
-          echo "Current hour in $TZ: $hour (configured RUN_HOURS: $RUN_HOURS)"
-          if [[ ",$RUN_HOURS," == *",$hour,"* ]]; then
-            echo "run=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "Not a scheduled hour — skipping."
+
+          now_h=$(TZ="$TZ" date +%-H)
+          now_m=$(TZ="$TZ" date +%-M)
+          today=$(TZ="$TZ" date +%Y-%m-%d)
+          now_min=$(( now_h * 60 + now_m ))
+          echo "Local time in $TZ: $(printf '%02d:%02d' "$now_h" "$now_m") (RUN_HOURS=$RUN_HOURS, catch-up=${CATCHUP_MIN}m)"
+
+          # Pick the most recent configured send-hour whose catch-up window we're
+          # still inside. "Most recent" so the latest due slot wins if several
+          # overlap; the marker step then ensures it only ever sends once.
+          slot_hour=""
+          IFS=',' read -ra HOURS <<< "$RUN_HOURS"
+          for h in "${HOURS[@]}"; do
+            start=$(( h * 60 ))
+            if [ "$now_min" -ge "$start" ] && [ "$now_min" -lt "$(( start + CATCHUP_MIN ))" ]; then
+              slot_hour="$h"
+            fi
+          done
+
+          if [ -z "$slot_hour" ]; then
+            echo "No send-hour due right now — skipping."
             echo "run=false" >> "$GITHUB_OUTPUT"
+            exit 0
           fi
 
-      - name: Checkout
+          echo "Send-hour ${slot_hour}:00 $TZ is due."
+          echo "run=true" >> "$GITHUB_OUTPUT"
+          echo "slot=${today}-h${slot_hour}" >> "$GITHUB_OUTPUT"
+
+      # Idempotency: this cache exists only once a given slot has already sent.
+      # A hit means "already done today" -> the steps below are skipped.
+      - name: Check slot marker
+        id: marker
         if: steps.gate.outputs.run == 'true'
+        uses: actions/cache/restore@5a3ec84eff668545956fd18022155c47e93e2684 # v4.2.3
+        with:
+          path: .sent
+          key: sent-${{ steps.gate.outputs.slot }}
+
+      - name: Checkout
+        if: steps.gate.outputs.run == 'true' && steps.marker.outputs.cache-hit != 'true'
         uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
         with:
           persist-credentials: false
 
       - name: Install Claude Code CLI
-        if: steps.gate.outputs.run == 'true'
+        if: steps.gate.outputs.run == 'true' && steps.marker.outputs.cache-hit != 'true'
         run: npm install -g @anthropic-ai/claude-code@2.1.195
 
       - name: Send hi to Claude
-        if: steps.gate.outputs.run == 'true'
+        if: steps.gate.outputs.run == 'true' && steps.marker.outputs.cache-hit != 'true'
         run: python3 send_hi.py
         env:
           CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+
+      # Only reached if the send above succeeded (a failure fails the job and
+      # skips this), so a failed send leaves no marker and retries next trigger.
+      - name: Record slot as sent
+        if: steps.gate.outputs.run == 'true' && steps.marker.outputs.cache-hit != 'true'
+        run: mkdir -p .sent && date -u +%FT%TZ > .sent/at
+
+      - name: Save slot marker
+        if: steps.gate.outputs.run == 'true' && steps.marker.outputs.cache-hit != 'true'
+        uses: actions/cache/save@5a3ec84eff668545956fd18022155c47e93e2684 # v4.2.3
+        with:
+          path: .sent
+          key: sent-${{ steps.gate.outputs.slot }}
