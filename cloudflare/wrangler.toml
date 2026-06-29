@@ -15,5 +15,9 @@ name = "claude-hi"
 main = "src/index.js"
 compatibility_date = "2026-06-29"
 
+# Cron-only Worker — no public HTTP endpoint. Disables the *.workers.dev URL so
+# the Worker can't be triggered anonymously (it has no `fetch` handler either).
+workers_dev = false
+
 [triggers]
 crons = ["30 0,5,10,15 * * *"]

@@ -43,17 +43,20 @@ npx wrangler secret put CLAUDE_CODE_OAUTH_TOKEN   # paste the sk-ant-oat01... to
 
 ## Test
 
+This is a **cron-only Worker** — it has no `fetch` handler and `workers_dev` is
+off, so there is no public HTTP endpoint to trigger anonymously. Test the
+scheduled path locally:
+
 ```bash
 # Local: run the scheduled handler on demand
-wrangler dev --test-scheduled
+npx wrangler dev --test-scheduled
 # then, in another terminal:
 curl "http://localhost:8787/__scheduled?cron=30+0,5,10,15+*+*+*"
 ```
 
-Or open the deployed `*.workers.dev` URL in a browser — the `fetch` handler sends
-one "hi" immediately and prints Claude's reply. Watch live logs with
-`wrangler tail`; see fired schedules in the dashboard under **Workers → your
-Worker → Cron Events**.
+To confirm a real fire, temporarily add a near-future minute to `crons` in
+`wrangler.toml`, deploy, and watch `npx wrangler tail` (or the dashboard under
+**Workers → claude-hi → Cron Events**); then revert.
 
 ## Schedule
 

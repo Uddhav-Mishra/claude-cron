@@ -42,18 +42,11 @@ async function sendHi(env) {
 }
 
 export default {
-  // Fires on the cron schedule in wrangler.toml.
+  // Fires on the cron schedule in wrangler.toml. Cron-only by design: there is
+  // no `fetch` handler, so the Worker exposes no public HTTP trigger that could
+  // be hit anonymously to spend subscription quota. Test via `wrangler dev
+  // --test-scheduled` instead.
   async scheduled(event, env, ctx) {
     ctx.waitUntil(sendHi(env));
-  },
-
-  // Optional: open the Worker's URL to trigger a manual test send.
-  async fetch(request, env) {
-    try {
-      const reply = await sendHi(env);
-      return new Response(`Claude replied: ${reply}\n`);
-    } catch (err) {
-      return new Response(`Error: ${err.message}\n`, { status: 500 });
-    }
   },
 };
