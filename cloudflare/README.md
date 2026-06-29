@@ -12,10 +12,33 @@ subscription via the `CLAUDE_CODE_OAUTH_TOKEN`.
 
 ```bash
 cd cloudflare
-npm install -g wrangler          # or prefix each command with `npx`
-wrangler login                   # links your Cloudflare account
-wrangler secret put CLAUDE_CODE_OAUTH_TOKEN   # paste the sk-ant-oat01... token
-wrangler deploy
+npm install              # installs the pinned wrangler (package.json)
+```
+
+Authenticate with Cloudflare, then deploy. Two auth options:
+
+**Option A — API token (recommended; non-interactive).** Create a token at
+dash.cloudflare.com → My Profile → API Tokens → **Edit Cloudflare Workers**
+template, then put it in the repo's `.env` (gitignored):
+
+```bash
+# .env
+CLOUDFLARE_API_TOKEN=...
+```
+
+```bash
+set -a; source ../.env; set +a     # loads CLOUDFLARE_API_TOKEN + CLAUDE_CODE_OAUTH_TOKEN
+npx wrangler deploy
+printf '%s' "$CLAUDE_CODE_OAUTH_TOKEN" | npx wrangler secret put CLAUDE_CODE_OAUTH_TOKEN
+```
+
+**Option B — interactive browser login.** Run in a real terminal (not a wrapped
+shell, which can't complete the OAuth callback):
+
+```bash
+npx wrangler login
+npx wrangler deploy
+npx wrangler secret put CLAUDE_CODE_OAUTH_TOKEN   # paste the sk-ant-oat01... token
 ```
 
 ## Test

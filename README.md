@@ -32,7 +32,14 @@ That's it. The schedule runs automatically.
 
 GitHub's scheduled cron is best-effort and often drops runs. For reliable,
 on-time triggering, there's a Cloudflare Worker version in [`cloudflare/`](cloudflare/)
-that calls the same API path — see [`cloudflare/README.md`](cloudflare/README.md).
+that calls the same subscription-billed API path — see
+[`cloudflare/README.md`](cloudflare/README.md) for the deploy steps.
+
+The two are independent and can run in parallel: keep the GitHub workflow as a
+backstop while the Cloudflare Worker handles reliable scheduling (you'll just get
+a duplicate "hi" when both fire at the same slot). Disable whichever you don't
+want — the GitHub workflow via the repo's **Actions** tab, the Worker via
+`npx wrangler delete`.
 
 ## Set your own times & timezone (no YAML editing)
 
