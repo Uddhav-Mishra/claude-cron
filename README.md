@@ -9,12 +9,6 @@ your machine, and Cloudflare's Cron Triggers fire reliably and on time.
 
 Default schedule: **6 AM, 11 AM, 4 PM & 9 PM IST** (easy to change — see below).
 
-> ⚠️ **Use at your own risk.** This sends automated requests that present as the
-> Claude Code CLI in order to draw on your **subscription** quota. That may
-> conflict with Anthropic's Terms of Service, and the automated, fingerprintable
-> traffic could get your Claude account rate-limited or suspended. You are
-> responsible for how you use it. See [Account safety](#account-safety--terms-of-service).
-
 ## What you need first
 
 - A **Claude Pro or Max** subscription (this is what gets billed).
@@ -110,21 +104,6 @@ Eastern (UTC−5, no DST handling) → `0 14,23 * * *`.
 - This is a **cron-only** Worker — it has no public HTTP endpoint, so nobody can
   trigger it anonymously to spend your quota.
 - The free Cloudflare plan covers this easily (4 sends/day).
-
-## Account safety / Terms of Service
-
-Read this before deploying:
-
-- The Worker authenticates with your **subscription** OAuth token and presents
-  as the Claude Code CLI (spoofed user-agent, the `oauth-2025-04-20` beta header,
-  and the Claude Code system prompt) so the request bills against your
-  subscription rather than API credits. This is **not** an officially supported
-  use of the token.
-- Doing this on an automated schedule may violate Anthropic's Terms of Service.
-- The traffic is easy to fingerprint (a fixed daily cadence and an identical
-  `"hi"` prompt), so Anthropic could rate-limit or **suspend your account**.
-- You use this entirely at your own risk. Point it at your own account only, and
-  keep the send frequency modest.
 
 ## How it works
 
