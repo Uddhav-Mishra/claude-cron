@@ -1,120 +1,139 @@
-# Claude "Hi" Cron Job
+# Claude "Hi" Cron (Cloudflare Worker)
 
-[![claude-hi](https://github.com/Uddhav-Mishra/claude-cron/actions/workflows/claude-hi.yml/badge.svg)](https://github.com/Uddhav-Mishra/claude-cron/actions/workflows/claude-hi.yml)
+A tiny [Cloudflare Worker](https://workers.cloudflare.com/) that says **"hi"** to
+Claude on a daily schedule, using your Claude **subscription** (Pro/Max) — not
+pay-per-token API credits.
 
-A free GitHub Actions workflow that says **"hi"** to Claude Code on a daily
-schedule, using your Claude **subscription** (Pro/Max), not API credits.
+It runs entirely on Cloudflare's **free** plan. Nothing needs to stay running on
+your machine, and Cloudflare's Cron Triggers fire reliably and on time.
 
-It calls the Messages API directly (via `send_hi.py`, Python standard library
-only — no CLI, no Node) on GitHub's servers, so nothing needs to stay running on
-your machine. Default schedule: **6 AM, 11 AM, 4 PM & 9 PM IST**.
+Default schedule: **6 AM, 11 AM, 4 PM & 9 PM IST** (easy to change — see below).
 
-## Setup (2 steps)
+> ⚠️ **Use at your own risk.** This sends automated requests that present as the
+> Claude Code CLI in order to draw on your **subscription** quota. That may
+> conflict with Anthropic's Terms of Service, and the automated, fingerprintable
+> traffic could get your Claude account rate-limited or suspended. You are
+> responsible for how you use it. See [Account safety](#account-safety--terms-of-service).
 
-### 1. Generate a login token
-On your machine, with Claude Code installed and logged in:
+## What you need first
+
+- A **Claude Pro or Max** subscription (this is what gets billed).
+- [**Claude Code**](https://docs.claude.com/en/docs/claude-code) installed and
+  logged in — used once to mint a token.
+- [**Node.js**](https://nodejs.org) installed (for `npm` / `npx`).
+
+## Setup — step by step
+
+### 1. Fork this repo
+Click **Fork** at the top-right of this page to create your own copy.
+
+### 2. Clone your fork
+```bash
+git clone https://github.com/YOUR-USERNAME/claude-cron.git
+cd claude-cron
+```
+
+### 3. Install dependencies
+```bash
+npm install
+```
+This installs [Wrangler](https://developers.cloudflare.com/workers/wrangler/),
+Cloudflare's CLI (version pinned in `package.json`).
+
+### 4. Generate your Claude token
 ```bash
 claude setup-token
 ```
 Copy the printed `sk-ant-oat...` value. (Requires a Pro/Max subscription.)
 
-### 2. Add it as a repo secret
+### 5. Create a free Cloudflare account
+Go to **[dash.cloudflare.com/sign-up](https://dash.cloudflare.com/sign-up)**, sign
+up, and verify your email. No credit card required — the free plan covers this.
+
+### 6. Log in to Cloudflare
 ```bash
-gh secret set CLAUDE_CODE_OAUTH_TOKEN
-# paste the token when prompted
+npx wrangler login
 ```
-Or in the browser: **repo → Settings → Secrets and variables → Actions → New
-repository secret**, name `CLAUDE_CODE_OAUTH_TOKEN`.
+This opens your browser — click **Allow** to authorize Wrangler.
 
-That's it. The schedule runs automatically.
-
-## Alternative: deploy on Cloudflare Workers
-
-GitHub's scheduled cron is best-effort and often drops runs. For reliable,
-on-time triggering, there's a Cloudflare Worker version in [`cloudflare/`](cloudflare/)
-that calls the same subscription-billed API path — see
-[`cloudflare/README.md`](cloudflare/README.md) for the deploy steps.
-
-The two are independent and can run in parallel: keep the GitHub workflow as a
-backstop while the Cloudflare Worker handles reliable scheduling (you'll just get
-a duplicate "hi" when both fire at the same slot). Disable whichever you don't
-want — the GitHub workflow via the repo's **Actions** tab, the Worker via
-`npx wrangler delete`.
-
-## Set your own times & timezone (no YAML editing)
-
-GitHub Actions cron is UTC-only and can't read variables, so this workflow runs
-**hourly** and a gate step decides whether the current hour matches *your* local
-time. Configure it with repo **Variables** (not secrets):
-
-**repo → Settings → Secrets and variables → Actions → Variables → New variable**
-
-| Variable    | Example        | Meaning                                      |
-|-------------|----------------|----------------------------------------------|
-| `TZ`        | `Asia/Kolkata` | Any IANA timezone (DST handled automatically)|
-| `RUN_HOURS` | `6,11,16,21`   | Local hours to run, comma-separated (0–23)   |
-
-Defaults (if you set nothing): `TZ=Asia/Kolkata`, `RUN_HOURS=6,11,16,21` → 6 AM, 11 AM, 4 PM & 9 PM IST.
-Examples: New York at 9am & 6pm → `TZ=America/New_York`, `RUN_HOURS=9,18`.
-
-<details>
-<summary>Common <code>TZ</code> values</summary>
-
-**Americas**
-| Region            | `TZ`                  |
-|-------------------|-----------------------|
-| US Eastern        | `America/New_York`    |
-| US Central        | `America/Chicago`     |
-| US Mountain       | `America/Denver`      |
-| US Pacific        | `America/Los_Angeles` |
-| Toronto           | `America/Toronto`     |
-| Mexico City       | `America/Mexico_City` |
-| São Paulo         | `America/Sao_Paulo`   |
-
-**Europe / Africa**
-| Region            | `TZ`                  |
-|-------------------|-----------------------|
-| UK                | `Europe/London`       |
-| Central Europe    | `Europe/Paris` / `Europe/Berlin` |
-| Madrid            | `Europe/Madrid`       |
-| Moscow            | `Europe/Moscow`       |
-| Johannesburg      | `Africa/Johannesburg` |
-
-**Asia / Pacific**
-| Region            | `TZ`                  |
-|-------------------|-----------------------|
-| India             | `Asia/Kolkata`        |
-| UAE               | `Asia/Dubai`          |
-| Singapore         | `Asia/Singapore`      |
-| Japan             | `Asia/Tokyo`          |
-| China             | `Asia/Shanghai`       |
-| Sydney            | `Australia/Sydney`    |
-| Auckland          | `Pacific/Auckland`    |
-
-Full list: [IANA tz database](https://en.wikipedia.org/wiki/List_of_tz_database_time_zones).
-</details>
-
-The gate matches on the **hour**, so the run lands at the minute set by the cron
-line (`30 * * * *`): `local_minute = (cron_minute + your_tz_offset) mod 60`.
-IST is +5:30, so minute 30 → **:00 IST** (on the hour). If your timezone is a
-whole-hour offset and you want on-the-hour runs, change the cron minute to `0`.
-
-## Test it now
-**repo → Actions → claude-hi → Run workflow** (a manual run skips the time gate).
-Check the logs for `Claude replied: Hi! How can I help you today?`
-
-## Run locally
+### 7. Deploy the Worker
 ```bash
-CLAUDE_CODE_OAUTH_TOKEN=sk-ant-oat... python3 send_hi.py
+npx wrangler deploy
 ```
-(If already logged in via `claude login`, the CLI works locally without the token.)
+
+### 8. Add your token as a secret
+```bash
+npx wrangler secret put CLAUDE_CODE_OAUTH_TOKEN
+```
+Paste the `sk-ant-oat...` token from step 4 when prompted. It's stored encrypted
+on Cloudflare — never in your repo.
+
+**That's it.** The Worker now runs on the schedule automatically.
+
+## Verify it works
+
+Run the scheduled handler locally on demand:
+```bash
+npx wrangler dev --test-scheduled
+# then, in another terminal:
+curl "http://localhost:8787/__scheduled?cron=30+0,5,10,15+*+*+*"
+```
+Look for `Claude replied: Hi! How can I help you today?` in the logs.
+
+To confirm a real run, watch live logs after a scheduled fire:
+```bash
+npx wrangler tail
+```
+Or check the Cloudflare dashboard under **Workers → claude-hi → Cron Events**.
+
+## Change the schedule
+
+Cron Triggers are **UTC only**. Edit `crons` in `wrangler.toml`, then redeploy
+(`npx wrangler deploy`). The default `30 0,5,10,15 * * *` maps to:
+
+| IST   | UTC   |
+| ----- | ----- |
+| 06:00 | 00:30 |
+| 11:00 | 05:30 |
+| 16:00 | 10:30 |
+| 21:00 | 15:30 |
+
+Convert your local times to UTC and set the cron fields accordingly. Cron format
+is `minute hour day-of-month month day-of-week`. For example, 9 AM & 6 PM US
+Eastern (UTC−5, no DST handling) → `0 14,23 * * *`.
 
 ## Notes
-- Uses your Claude Code **subscription limits**, not API billing.
-- The CLI version and `actions/checkout` are pinned for supply-chain safety; bump
-  them deliberately in `.github/workflows/claude-hi.yml`.
-- GitHub may pause scheduled workflows after ~60 days of repo inactivity (any push
-  re-enables them), and scheduled runs can be delayed a few minutes under load.
+
+- Billed against your Claude **subscription** limits, not API credits.
+- The OAuth token does **not** auto-refresh. If it expires, mint a new one
+  (`claude setup-token`) and re-run `npx wrangler secret put CLAUDE_CODE_OAUTH_TOKEN`.
+- This is a **cron-only** Worker — it has no public HTTP endpoint, so nobody can
+  trigger it anonymously to spend your quota.
+- The free Cloudflare plan covers this easily (4 sends/day).
+
+## Account safety / Terms of Service
+
+Read this before deploying:
+
+- The Worker authenticates with your **subscription** OAuth token and presents
+  as the Claude Code CLI (spoofed user-agent, the `oauth-2025-04-20` beta header,
+  and the Claude Code system prompt) so the request bills against your
+  subscription rather than API credits. This is **not** an officially supported
+  use of the token.
+- Doing this on an automated schedule may violate Anthropic's Terms of Service.
+- The traffic is easy to fingerprint (a fixed daily cadence and an identical
+  `"hi"` prompt), so Anthropic could rate-limit or **suspend your account**.
+- You use this entirely at your own risk. Point it at your own account only, and
+  keep the send frequency modest.
+
+## How it works
+
+The Worker's `scheduled` handler (`src/index.js`) fires on the cron schedule and
+sends a single `POST` to the Anthropic Messages API
+(`https://api.anthropic.com/v1/messages`). It authenticates with your
+`CLAUDE_CODE_OAUTH_TOKEN` as a Bearer token and presents as Claude Code (the
+`oauth-2025-04-20` beta header + Claude Code system prompt), so the request draws
+from your subscription instead of API billing.
 
 ## License
 
